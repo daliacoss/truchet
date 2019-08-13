@@ -22,17 +22,25 @@
         bl (update tl 1 + w)
         br (update tr 1 + w)
         points (apply concat (take-cycle 3 [tl tr br bl] r))]
-    [:polygon {:points (string/join " " points)}]))
+    [:polygon {:points (string/join " " points)
+               }]))
 
-(defn hello-world []
-  [:svg {:width "100%" :height 500}
-   (for [y (range 10) x (range 10)]
+(defn grid [data]
+  [:svg {:width "100%" :height "100%"}
+   (for [y (range 10) x (range 20)]
      [cell {:r (rand-int 3) :x x :y y :key (gstring/format"%d-%d" y x)}])
    ])
 
-(defn start []
-  (reagent/render-component [hello-world]
+(defn render-grid []
+  (reagent/render-component [grid]
                             (. js/document (getElementById "app"))))
+
+(defn handle-keyup [x]
+  (if (= x.key " ") (render-grid)))
+
+(defn start []
+  (. js/document (addEventListener "keyup" handle-keyup))
+  (render-grid))
 
 (defn ^:export init []
   ;; init is called ONCE when the page loads
