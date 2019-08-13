@@ -5,9 +5,9 @@
             [goog.string.format]
             ))
 
-;; define your app data so that it doesn't get over-written on reload
-
 (defonce app-state (atom {:text "Hello world!"}))
+
+(def cell-size 100)
 
 (defn take-cycle
   ([n xs]
@@ -15,9 +15,9 @@
   ([n xs i]
    (take n (-> xs cycle (nthrest i)))))
 
-(defn cell [{:keys [x y r] :or {x 0 y 0 r 0}}]
-  (let [w 50
-        tl [(* x w) (* y w)]
+(defn cell [{:keys [x y r w]
+             :or {x 0, y 0, r 0, w cell-size}}]
+  (let [tl [(* x w) (* y w)]
         tr (update tl 0 + w)
         bl (update tl 1 + w)
         br (update tr 1 + w)
@@ -25,15 +25,18 @@
     [:polygon {:points (string/join " " points)
                }]))
 
-(defn grid [data]
+(defn grid [{:keys [width height]}]
   [:svg {:width "100%" :height "100%"}
-   (for [y (range 10) x (range 20)]
-     [cell {:r (rand-int 3) :x x :y y :key (gstring/format"%d-%d" y x)}])
+   (let [rows (js/Math.ceil (/ height cell-size))
+         cols (js/Math.ceil (/ width cell-size))]
+     (for [y (range rows) x (range cols)]
+       [cell {:r (rand-int 3) :x x :y y :key (gstring/format"%d-%d" y x)}]))
    ])
 
 (defn render-grid []
-  (reagent/render-component [grid]
-                            (. js/document (getElementById "app"))))
+  (let [container (. js/document (getElementById "app"))
+        props {:width container.clientWidth :height container.clientHeight}]
+    (reagent/render-component [grid props] container)))
 
 (defn handle-keyup [x]
   (if (= x.key " ") (render-grid)))
