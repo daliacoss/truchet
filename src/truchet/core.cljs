@@ -1,6 +1,9 @@
 (ns truchet.core
   (:require [reagent.core :as reagent :refer [atom]]
-            [clojure.string :as string]))
+            [clojure.string :as string]
+            [goog.string :as gstring]
+            [goog.string.format]
+            ))
 
 ;; define your app data so that it doesn't get over-written on reload
 
@@ -22,8 +25,9 @@
     [:polygon {:points (string/join " " points)}]))
 
 (defn hello-world []
-  [:svg {:width "100%"}
-   (map (fn [x] [cell {:r (rand-int 4) :x x}]) (range 10))
+  [:svg {:width "100%" :height 500}
+   (for [y (range 10) x (range 10)]
+     [cell {:r (rand-int 3) :x x :y y :key (gstring/format"%d-%d" y x)}])
    ])
 
 (defn start []
