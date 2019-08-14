@@ -1,6 +1,7 @@
 (ns truchet.core
   (:require [reagent.core :as reagent :refer [atom]]
             [clojure.string :as string]
+            [reanimated.core :as anim]
             [goog.string :as gstring]
             [goog.string.format]
             ))
@@ -21,16 +22,26 @@
         tr (update tl 0 + w)
         bl (update tl 1 + w)
         br (update tr 1 + w)
-        points (apply concat (take-cycle 3 [tl tr br bl] r))]
-    [:polygon {:points (string/join " " points)
-               }]))
+        r (atom r)
+        points (map atom (repeat 6 0))
+        anim-points (map anim/interpolate-to points)]
+    (fn []
+      (dorun (map reset! points (apply concat (take-cycle 3 [tl tr br bl] @r))))
+      [:g
+       [:polygon {:points (string/join " " (map deref anim-points))}]
+       [:rect {:width w
+               :height w
+               :fill "none"
+               :x (first tl)
+               :y (second tl)
+               :on-click #(swap! r inc)}]])))
 
 (defn grid [{:keys [width height]}]
-  [:svg {:width "100%" :height "100%"}
+  [:svg {:width "100%" :height "100%" :pointer-events "all"}
    (let [rows (js/Math.ceil (/ height cell-size))
          cols (js/Math.ceil (/ width cell-size))]
      (for [y (range rows) x (range cols)]
-       [cell {:r (rand-int 3) :x x :y y :key (gstring/format"%d-%d" y x)}]))
+        [cell {:r (rand-int 4) :x x :y y :key (gstring/format"%d-%d" y x)}]))
    ])
 
 (defn render-grid []

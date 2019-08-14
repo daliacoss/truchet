@@ -3,6 +3,7 @@
  ["src"]
 
  :dependencies [[binaryage/devtools "0.9.7"]
+                [reanimated "0.6.1"]
                 [reagent "0.8.0-alpha2"]]
 
  ;; set an nrepl port for connection to a REPL.
