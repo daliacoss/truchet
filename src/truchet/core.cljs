@@ -56,11 +56,8 @@
         props {:width container.clientWidth :height container.clientHeight}]
     (reagent/render-component [grid props] container)))
 
-(defn handle-keyup [x]
-  (if (= x.key " ") (render-grid)))
-
 (defn start []
-  (. js/document (addEventListener "keyup" handle-keyup))
+  (. js/window (addEventListener "resize" render-grid))
   (render-grid))
 
 (defn ^:export init []
