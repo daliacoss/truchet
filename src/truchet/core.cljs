@@ -22,13 +22,20 @@
         tr (update tl 0 + w)
         bl (update tl 1 + w)
         br (update tr 1 + w)
+        orientations [[tl tr br]
+                      [tr br bl]
+                      [br bl tl]
+                      [bl tl tr]]
         r (atom r)
         points (map atom (repeat 6 0))
         anim-points (map anim/interpolate-to points)]
-    (fn []
-      (dorun (map reset! points (apply concat (take-cycle 3 [tl tr br bl] @r))))
+    (fn [params]
+      (dorun
+       ; flatten vector of vectors
+       (map reset! points (apply concat (get orientations (mod @r 4)))))
       [:g
-       [:polygon {:points (string/join " " (map deref anim-points))}]
+       [:polygon {:points (string/join " " (map deref anim-points))
+                  :fill "black"}]
        [:rect {:width w
                :height w
                :fill "none"
