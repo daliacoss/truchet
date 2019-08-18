@@ -19,13 +19,14 @@
         tr (update tl 0 + w)
         bl (update tl 1 + w)
         br (update tr 1 + w)]
-    {:r r
-     :tl tl
-     :w w
-     :coords [[tl tr br]
-              [tr br bl]
-              [br bl tl]
-              [bl tl tr]]}))
+    [[y x]
+     {:r r
+      :tl tl
+      :w w
+      :coords [[tl tr br]
+               [tr br bl]
+               [br bl tl]
+               [bl tl tr]]}]))
 
 (defn get-container []
   (. js/document (getElementById "app")))
@@ -76,15 +77,18 @@
         resize-and-fill-grid
         (fn [{:keys [width height]}]
           (let [new-rows (js/Math.ceil (/ height cell-size))
-                new-cols (js/Math.ceil (/ width cell-size))]
-            (->> (for [y (range new-rows) x (range new-cols)]
-                  [[y x]
-                   (if-let [c (get @cell-states [y x])]
-                           c
-                           (cell-entry {:x x :y y :w cell-size :r (rand-int 4)}))])
+                new-cols (js/Math.ceil (/ width cell-size))
+                cell-states-dr @cell-states]
+            (->> (concat
+                  ; add new rows
+                  (for [y (range @rows new-rows) x (range new-cols)]
+                       (cell-entry {:x x :y y :w cell-size :r (rand-int 4)}))
+                  ; add new columns to existing rows
+                  (for [y (range new-rows) x (range @cols new-cols)]
+                       (cell-entry {:x x :y y :w cell-size :r (rand-int 4)})))
                  (apply concat)
                  (apply hash-map)
-                 (reset! cell-states))
+                 (swap! cell-states merge))
             (reset! rows new-rows)
             (reset! cols new-cols)))
 
