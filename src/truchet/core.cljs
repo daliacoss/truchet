@@ -2,6 +2,7 @@
   (:require [reagent.core :as reagent :refer [atom rswap!]]
             [clojure.string :as string]
             [reanimated.core :as anim]
+            [react-color :refer [SketchPicker]]
             [goog.string :as gstring]
             [goog.string.format]
             ))
@@ -72,8 +73,9 @@
         fill (atom "brown")
         cell-states (atom {})
 
+        ; callbacks
         resize-and-fill-grid
-        (fn [{:keys [width height]}]
+        (fn [{:keys [width height reset-existing?]}]
           (let [cs @cell-size
                 new-rows (js/Math.ceil (/ height cs))
                 new-cols (js/Math.ceil (/ width cs))
@@ -90,11 +92,12 @@
                  (swap! cell-states merge))
             (reset! rows new-rows)
             (reset! cols new-cols)))
-
         on-cell-click
         (fn [k] 
           (let [old-r (get-in @cell-states [k :r])]
-            (swap! cell-states assoc-in [k :r] (-> old-r inc (mod 4)))))]
+            (swap! cell-states assoc-in [k :r] (-> old-r inc (mod 4)))))
+        on-color-change
+        (fn [x] (reset! fill (. x -hex)))]
 
     ; initialize the component
     (resize-and-fill-grid (get-container-size))
@@ -103,11 +106,15 @@
                   #(resize-and-fill-grid (get-container-size))))
     ; renderer
     (fn []
-      [grid {:rows @rows
-             :cols @cols
-             :fill @fill
-             :on-cell-click on-cell-click
-             :cell-data @cell-states}])))
+      [:span
+       [:> SketchPicker {:color @fill
+                         :onChangeComplete on-color-change}]
+       ;[:button.tweak "hi"]
+       [grid {:rows @rows
+              :cols @cols
+              :fill @fill
+              :on-cell-click on-cell-click
+              :cell-data @cell-states}]])))
 
 (defn start []
   (reagent/render-component [app] (get-container)))
