@@ -3,7 +3,6 @@
             [clojure.string :as string]
             [reanimated.core :as anim]
             [tinycolor2 :as tinycolor]
-            [react-color]
             [goog.string :as gstring]
             [goog.string.format]
             ))
@@ -74,12 +73,20 @@
                 :max 255
                 :onChange on-change
                 :step 1
-                :class "color-slider"}]
+                :class "color-slider"}
+        numbox (assoc slider :type "number")
+        combined-input
+        (fn [n v]
+          [[:input (assoc slider :name n :value v)]
+           [:input (assoc numbox :name n :value v)]
+           [:br]])]
     (fn [{:keys [rgb] :as props}]
-      [:form
-       [:input (assoc slider :name "red" :value (rgb :r))][:br]
-       [:input (assoc slider :name "green" :value (rgb :g))][:br]
-       [:input (assoc slider :name "blue" :value (rgb :b))]])))
+      (into
+       [:form]
+       (apply concat (map
+                      combined-input
+                      ["red" "green" "blue"]
+                      [(rgb :r) (rgb :g) (rgb :b)]))))))
 
 (def rgb-keys {:red :r :green :g :blue :b})
 
@@ -115,10 +122,12 @@
             (swap! cell-states assoc-in [k :r] (-> old-r inc (mod 4)))))
         on-rgb-change
         (fn [x]
-          (let [target (.. x -currentTarget)
+          (let [target (.. x -currentTarget) ; currentTarget via SyntheticEvent
                 k (keyword (. target -name))
-                value (. target -value)]
-            (swap! fill assoc (get rgb-keys k) value)))] ; see react's SyntheticEvent
+                ; input value will always be a valid number or empty string
+                ; (see whatwg 4.10.5.1.12) 
+                value (js/Number (. target -value))]
+            (swap! fill assoc (get rgb-keys k) value)))]
 
     ; initialize the component
     (resize-and-fill-grid (get-container-size))
