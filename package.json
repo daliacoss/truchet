@@ -9,9 +9,9 @@
   "dependencies": {
     "create-react-class": "^15.6.2",
     "react": "^16.0.0",
-    "react-color": "^2.17.3",
     "react-dom": "^16.0.0",
     "shadow-cljs": "^2.0.80",
-    "svg.js": "^2.7.1"
+    "svg.js": "^2.7.1",
+    "tinycolor2": "^1.4.1"
   }
 }
