@@ -1,8 +1,9 @@
 (ns truchet.core
-  (:require [reagent.core :as reagent :refer [atom rswap!]]
+  (:require [reagent.core :as reagent :refer [atom rswap! create-element]]
             [clojure.string :as string]
             [reanimated.core :as anim]
-            [react-color :refer [SketchPicker]]
+            [tinycolor2 :as tinycolor]
+            [react-color]
             [goog.string :as gstring]
             [goog.string.format]
             ))
@@ -66,11 +67,27 @@
              :on-click on-cell-click)]))
      ]))
 
+
+(defn rgb-slider [{:keys [on-change]}]
+  (let [slider {:type "range"
+                :min 0
+                :max 255
+                :onChange on-change
+                :step 1
+                :class "color-slider"}]
+    (fn [{:keys [rgb] :as props}]
+      [:form
+       [:input (assoc slider :name "red" :value (rgb :r))][:br]
+       [:input (assoc slider :name "green" :value (rgb :g))][:br]
+       [:input (assoc slider :name "blue" :value (rgb :b))]])))
+
+(def rgb-keys {:red :r :green :g :blue :b})
+
 (defn app []
   (let [rows (atom 0)
         cols (atom 0)
         cell-size (atom 100)
-        fill (atom "brown")
+        fill (atom {:r 100 :g 0 :b 200}) 
         cell-states (atom {})
 
         ; callbacks
@@ -96,8 +113,12 @@
         (fn [k] 
           (let [old-r (get-in @cell-states [k :r])]
             (swap! cell-states assoc-in [k :r] (-> old-r inc (mod 4)))))
-        on-color-change
-        (fn [x] (reset! fill (. x -hex)))]
+        on-rgb-change
+        (fn [x]
+          (let [target (.. x -currentTarget)
+                k (keyword (. target -name))
+                value (. target -value)]
+            (swap! fill assoc (get rgb-keys k) value)))] ; see react's SyntheticEvent
 
     ; initialize the component
     (resize-and-fill-grid (get-container-size))
@@ -107,12 +128,14 @@
     ; renderer
     (fn []
       [:span
-       [:> SketchPicker {:color @fill
-                         :onChangeComplete on-color-change}]
-       ;[:button.tweak "hi"]
+       [:div.menu
+        [:button "settings"]
+        [:div.color-form
+         ;[rgb-slider {:rgb @fill :on-change on-rgb-change}]
+         [rgb-slider {:rgb @fill :on-change on-rgb-change}]]]
        [grid {:rows @rows
               :cols @cols
-              :fill @fill
+              :fill (. (tinycolor (clj->js @fill)) toRgbString)
               :on-cell-click on-cell-click
               :cell-data @cell-states}]])))
 

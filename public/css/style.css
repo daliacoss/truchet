@@ -6,8 +6,14 @@ html, body {
     overflow: hidden;
     height: 100%;
 }
-button.tweak {
+.menu {
     position: absolute;
     top: 40px;
     left: 40px;
+    /*width: 600px;*/
+    background-color: white;
+}
+.color-form {
+    display: flex;
+    flex-wrap: nowrap;
 }
