@@ -54,8 +54,11 @@
                :on-click #(on-click (get params :key))}]])))
 
 (defn grid [params]
-  (fn [{:keys [rows cols fill cell-data on-cell-click]}]
-    [:svg {:width "100%" :height "100%" :pointer-events "all"}
+  (fn [{:keys [rows cols fill bg cell-data on-cell-click]}]
+    [:svg {:width "100%"
+           :height "100%"
+           :pointer-events "all"
+           :style {:background-color bg}}
      (doall
       (for [y (range rows) x (range cols)]
            [cell
@@ -67,34 +70,46 @@
      ]))
 
 
-(defn rgb-slider [{:keys [on-change]}]
+(defn rgb-slider [{:keys [on-change legend]}]
   (let [slider {:type "range"
                 :min 0
                 :max 255
                 :onChange on-change
-                :step 1
-                :class "color-slider"}
+                :step 1}
         numbox (assoc slider :type "number")
         combined-input
         (fn [n v]
-          [[:input (assoc slider :name n :value v)]
+          [:div
+           [:label {:for n} n]
+           [:span.slider-wrapper [:input (assoc slider :name n :value v)]]
            [:input (assoc numbox :name n :value v)]
-           [:br]])]
+           ;[:br]
+           ])]
     (fn [{:keys [rgb] :as props}]
       (into
-       [:form]
-       (apply concat (map
-                      combined-input
-                      ["red" "green" "blue"]
-                      [(rgb :r) (rgb :g) (rgb :b)]))))))
+       [:fieldset [:legend legend]]
+       (map
+        combined-input
+        ["red" "green" "blue"]
+        [(rgb :r) (rgb :g) (rgb :b)])))))
 
 (def rgb-keys {:red :r :green :g :blue :b})
+
+(defn rgb-change-handler [a]
+  (fn [x]
+    (let [target (.. x -currentTarget) ; currentTarget via SyntheticEvent
+          k (keyword (. target -name))
+          ; input value will always be a valid number or empty string
+          ; (see whatwg 4.10.5.1.12) 
+          value (js/Number (. target -value))]
+      (swap! a assoc (get rgb-keys k) value))))
 
 (defn app []
   (let [rows (atom 0)
         cols (atom 0)
         cell-size (atom 100)
         fill (atom {:r 100 :g 0 :b 200}) 
+        bg (atom {:r 255 :g 255 :b 255}) 
         cell-states (atom {})
 
         ; callbacks
@@ -120,14 +135,8 @@
         (fn [k] 
           (let [old-r (get-in @cell-states [k :r])]
             (swap! cell-states assoc-in [k :r] (-> old-r inc (mod 4)))))
-        on-rgb-change
-        (fn [x]
-          (let [target (.. x -currentTarget) ; currentTarget via SyntheticEvent
-                k (keyword (. target -name))
-                ; input value will always be a valid number or empty string
-                ; (see whatwg 4.10.5.1.12) 
-                value (js/Number (. target -value))]
-            (swap! fill assoc (get rgb-keys k) value)))]
+        on-fill-rgb-change (rgb-change-handler fill)
+        on-bg-rgb-change (rgb-change-handler bg)]
 
     ; initialize the component
     (resize-and-fill-grid (get-container-size))
@@ -140,11 +149,12 @@
        [:div.menu
         [:button "settings"]
         [:div.color-form
-         ;[rgb-slider {:rgb @fill :on-change on-rgb-change}]
-         [rgb-slider {:rgb @fill :on-change on-rgb-change}]]]
+         [rgb-slider {:rgb @fill :on-change on-fill-rgb-change :legend "Colour A"}]
+         [rgb-slider {:rgb @bg :on-change on-bg-rgb-change :legend "Colour B"}]]]
        [grid {:rows @rows
               :cols @cols
               :fill (. (tinycolor (clj->js @fill)) toRgbString)
+              :bg (. (tinycolor (clj->js @bg)) toRgbString)
               :on-cell-click on-cell-click
               :cell-data @cell-states}]])))
 
