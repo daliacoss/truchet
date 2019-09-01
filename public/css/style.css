@@ -31,6 +31,10 @@ button {
     border: 1px outset black;
 }
 
+button.small {
+    padding: 4px;
+}
+
 button:active {
     border: 1px inset black;
 }

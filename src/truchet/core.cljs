@@ -15,6 +15,8 @@
 ;  ([n xs i]
 ;   (take n (-> xs cycle (nthrest i)))))
 
+(def rgb-keys {:red :r :green :g :blue :b})
+
 (defn cell-entry [{:keys [x y w r]}]
   (let [tl [(* x w) (* y w)]
         tr (update tl 0 + w)
@@ -69,13 +71,15 @@
      ]))
 
 
-(defn rgb-slider [{:keys [on-change legend]}]
+(defn rgb-slider [{:keys [on-change color-name]}]
   (let [slider {:type "range"
                 :min 0
                 :max 255
                 :onChange on-change
                 :step 1}
         numbox (assoc slider :type "number")
+        legend (str "Colour " color-name)
+        other (if (= color-name "A") "B" "A")
         combined-input
         (fn [n v]
           [:div
@@ -86,13 +90,12 @@
            ])]
     (fn [{:keys [rgb] :as props}]
       (into
-       [:fieldset [:legend legend]]
+       [:fieldset [:legend legend]
+        [:div [:button.small {:type "button"} "Complement " other]]]
        (map
         combined-input
         ["red" "green" "blue"]
         [(rgb :r) (rgb :g) (rgb :b)])))))
-
-(def rgb-keys {:red :r :green :g :blue :b})
 
 (defn rgb-change-handler [a]
   (fn [x]
@@ -108,6 +111,7 @@
 
 (defn color-menu [{:keys [fill
                           bg
+                          on-swap-button-click
                           on-back-button-click
                           on-fill-rgb-change
                           on-bg-rgb-change]}]
@@ -115,8 +119,9 @@
    [:button {:onClick on-back-button-click} "Back"]
    [:div.menu-content
     [:form.color-form
-     [rgb-slider {:rgb fill :on-change on-fill-rgb-change :legend "Colour A"}]
-     [rgb-slider {:rgb bg :on-change on-bg-rgb-change :legend "Colour B"}]]]])
+     [rgb-slider {:rgb fill :on-change on-fill-rgb-change :color-name "A"}]
+     [rgb-slider {:rgb bg :on-change on-bg-rgb-change :color-name "B"}]
+     [:div [:button {:type "button" :onClick on-swap-button-click} "Swap"]]]]])
 
 (defn app []
   (let [rows (atom 0)
@@ -152,6 +157,12 @@
             (swap! cell-states assoc-in [k :r] (-> old-r inc (mod 4)))))
         on-fill-rgb-change (rgb-change-handler fill)
         on-bg-rgb-change (rgb-change-handler bg)
+        on-swap-button-click
+        (fn []
+          (let [old-fill @fill
+                old-bg @bg]
+            (reset! fill old-bg)
+            (reset! bg old-fill)))
         on-back-button-click
         (fn [] (reset! control-menu button-open-control-menu))
         open-control-menu
@@ -161,6 +172,7 @@
         {button-open-control-menu #(hash-map :on-click open-control-menu)
          color-menu #(hash-map :fill @fill
                                :bg @bg
+                               :on-swap-button-click on-swap-button-click
                                :on-back-button-click on-back-button-click
                                :on-fill-rgb-change on-fill-rgb-change
                                :on-bg-rgb-change on-bg-rgb-change)}]
