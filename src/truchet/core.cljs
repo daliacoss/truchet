@@ -103,6 +103,21 @@
           value (js/Number (. target -value))]
       (swap! a assoc (get rgb-keys k) value))))
 
+(defn button-open-control-menu [{:keys [on-click] :as props}]
+  [:button {:onClick on-click :autofocus "" :type "button"} "Controls"])
+
+(defn color-menu [{:keys [fill
+                          bg
+                          on-back-button-click
+                          on-fill-rgb-change
+                          on-bg-rgb-change]}]
+  [:div.menu
+   [:button {:onClick on-back-button-click} "Back"]
+   [:div.menu-content
+    [:form.color-form
+     [rgb-slider {:rgb fill :on-change on-fill-rgb-change :legend "Colour A"}]
+     [rgb-slider {:rgb bg :on-change on-bg-rgb-change :legend "Colour B"}]]]])
+
 (defn app []
   (let [rows (atom 0)
         cols (atom 0)
@@ -110,6 +125,7 @@
         fill (atom {:r 100 :g 0 :b 200}) 
         bg (atom {:r 255 :g 255 :b 255}) 
         cell-states (atom {})
+        control-menu (atom button-open-control-menu)
 
         ; callbacks
         resize-and-fill-grid
@@ -135,7 +151,19 @@
           (let [old-r (get-in @cell-states [k :r])]
             (swap! cell-states assoc-in [k :r] (-> old-r inc (mod 4)))))
         on-fill-rgb-change (rgb-change-handler fill)
-        on-bg-rgb-change (rgb-change-handler bg)]
+        on-bg-rgb-change (rgb-change-handler bg)
+        on-back-button-click
+        (fn [] (reset! control-menu button-open-control-menu))
+        open-control-menu
+        (fn [e] (reset! control-menu color-menu))
+
+        control-menu-props
+        {button-open-control-menu #(hash-map :on-click open-control-menu)
+         color-menu #(hash-map :fill @fill
+                               :bg @bg
+                               :on-back-button-click on-back-button-click
+                               :on-fill-rgb-change on-fill-rgb-change
+                               :on-bg-rgb-change on-bg-rgb-change)}]
 
     ; initialize the component
     (resize-and-fill-grid (get-container-size))
@@ -145,11 +173,8 @@
     ; renderer
     (fn []
       [:div#app
-       [:div.menu
-        [:button "settings"]
-        [:div.color-form
-         [rgb-slider {:rgb @fill :on-change on-fill-rgb-change :legend "Colour A"}]
-         [rgb-slider {:rgb @bg :on-change on-bg-rgb-change :legend "Colour B"}]]]
+       [:div#menu-wrapper
+        [@control-menu ((control-menu-props @control-menu))]]
        [grid {:rows @rows
               :cols @cols
               :fill (. (tinycolor (clj->js @fill)) toRgbString)
