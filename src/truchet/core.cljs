@@ -30,7 +30,7 @@
                [bl tl tr]]}]))
 
 (defn get-container []
-  (. js/document (getElementById "app")))
+  (. js/document (getElementById "app-container")))
 
 (defn get-container-size []
   (let [c (get-container)]
@@ -55,8 +55,7 @@
 
 (defn grid [params]
   (fn [{:keys [rows cols fill bg cell-data on-cell-click]}]
-    [:svg {:width "100%"
-           :height "100%"
+    [:svg {:class "grid"
            :pointer-events "all"
            :style {:background-color bg}}
      (doall
@@ -145,7 +144,7 @@
                   #(resize-and-fill-grid (get-container-size))))
     ; renderer
     (fn []
-      [:span
+      [:div#app
        [:div.menu
         [:button "settings"]
         [:div.color-form
