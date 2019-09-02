@@ -47,7 +47,7 @@
        (map reset! points (apply concat (get coords r))))
       [:g
        [:polygon {:points (string/join " " (map deref anim-points))
-                  :fill (get params :fill "black")}]
+                  }]
        [:rect {:width w
                :height w
                :fill "none"
@@ -58,6 +58,7 @@
 (defn grid [params]
   (fn [{:keys [rows cols fill bg cell-data on-cell-click]}]
     [:svg {:class "grid"
+           :fill fill
            :pointer-events "all"
            :style {:background-color bg}}
      (doall
@@ -70,6 +71,9 @@
              :on-click on-cell-click)]))
      ]))
 
+(defn save-svg []
+  (. js/URL (createObjectURL
+             (.. js/document (querySelector "svg.grid") -outerHTML))))
 
 (defn rgb-slider [{:keys [on-change color-name]}]
   (let [slider {:type "range"
