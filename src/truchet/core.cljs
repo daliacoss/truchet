@@ -58,9 +58,12 @@
 (defn grid [params]
   (fn [{:keys [rows cols fill bg cell-data on-cell-click]}]
     [:svg {:class "grid"
+           :xmlns "http://www.w3.org/2000/svg"
            :fill fill
-           :pointer-events "all"
-           :style {:background-color bg}}
+           :shape-rendering "crispEdges"
+           :pointer-events "all"}
+     (let [w (get-in cell-data [[0 0] :w] 0)]
+       [:rect {:width (* cols w) :height (* rows w) :fill bg}])
      (doall
       (for [y (range rows) x (range cols)]
            [cell
@@ -222,6 +225,7 @@
         [@control-menu ((control-menu-props @control-menu))]]
        [grid {:rows @rows
               :cols @cols
+              :svg-size (get-container-size)
               :fill (. (tinycolor (clj->js @fill)) toRgbString)
               :bg (. (tinycolor (clj->js @bg)) toRgbString)
               :on-cell-click on-cell-click
