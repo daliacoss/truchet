@@ -45,17 +45,16 @@ svg.grid {
 }
 
 .menu-content {
-    margin-top: 20px;
+    margin-top: 10px;
 }
 
 .color-form fieldset {
-    border: 0px;
     border-radius: 5px;
 }
 
 .color-form div {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-start;
     margin: 8px 0;
 }
 .color-form label {

@@ -88,14 +88,18 @@
            [:input (assoc numbox :name n :value v)]
            ;[:br]
            ])]
-    (fn [{:keys [rgb] :as props}]
-      (into
-       [:fieldset [:legend legend]
-        [:div [:button.small {:type "button"} "Complement " other]]]
-       (map
-        combined-input
-        ["red" "green" "blue"]
-        [(rgb :r) (rgb :g) (rgb :b)])))))
+    (fn [{:keys [rgb on-complement-button-click] :as props}]
+      (conj
+       (into
+        [:fieldset [:legend legend]]
+        (map
+         combined-input
+         ["red" "green" "blue"]
+         [(rgb :r) (rgb :g) (rgb :b)]))
+       [:div [:button.small {:type "button"
+                             :name (str "complement" other)
+                             :onClick on-complement-button-click}
+                             "Complement " other]]))))
 
 (defn rgb-change-handler [a]
   (fn [x]
@@ -106,6 +110,13 @@
           value (js/Number (. target -value))]
       (swap! a assoc (get rgb-keys k) value))))
 
+(defn set-color-from-comp
+  ([] nil)
+  ([a s]
+   (reset! a (js->clj
+              (.. (tinycolor (clj->js s)) complement toRgb)
+              :keywordize-keys true ))))
+
 (defn button-open-control-menu [{:keys [on-click] :as props}]
   [:button {:onClick on-click :autofocus "" :type "button"} "Controls"])
 
@@ -114,13 +125,20 @@
                           on-swap-button-click
                           on-back-button-click
                           on-fill-rgb-change
+                          on-complement-button-click
                           on-bg-rgb-change]}]
   [:div.menu
    [:button {:onClick on-back-button-click} "Back"]
    [:div.menu-content
     [:form.color-form
-     [rgb-slider {:rgb fill :on-change on-fill-rgb-change :color-name "A"}]
-     [rgb-slider {:rgb bg :on-change on-bg-rgb-change :color-name "B"}]
+     [rgb-slider {:rgb fill
+                  :on-change on-fill-rgb-change
+                  :color-name "A"
+                  :on-complement-button-click on-complement-button-click}]
+     [rgb-slider {:rgb bg
+                  :on-change on-bg-rgb-change
+                  :color-name "B"
+                  :on-complement-button-click on-complement-button-click}]
      [:div [:button {:type "button" :onClick on-swap-button-click} "Swap"]]]]])
 
 (defn app []
@@ -165,6 +183,12 @@
             (reset! bg old-fill)))
         on-back-button-click
         (fn [] (reset! control-menu button-open-control-menu))
+        on-complement-button-click
+        (fn [x]
+          (apply set-color-from-comp
+                 (condp = (.. x -target -name)
+                        "complementB" [fill @bg]
+                        "complementA" [bg @fill])))
         open-control-menu
         (fn [e] (reset! control-menu color-menu))
 
@@ -172,6 +196,7 @@
         {button-open-control-menu #(hash-map :on-click open-control-menu)
          color-menu #(hash-map :fill @fill
                                :bg @bg
+                               :on-complement-button-click on-complement-button-click
                                :on-swap-button-click on-swap-button-click
                                :on-back-button-click on-back-button-click
                                :on-fill-rgb-change on-fill-rgb-change
