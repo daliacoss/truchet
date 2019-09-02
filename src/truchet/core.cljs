@@ -144,6 +144,8 @@
 (defn app []
   (let [rows (atom 0)
         cols (atom 0)
+        most-rows (atom 0)
+        most-cols (atom 0)
         cell-size (atom 100)
         fill (atom {:r 100 :g 0 :b 200}) 
         bg (atom {:r 255 :g 255 :b 255}) 
@@ -159,14 +161,16 @@
                 cell-states-dr @cell-states]
             (->> (concat
                   ; add new rows
-                  (for [y (range @rows new-rows) x (range new-cols)]
+                  (for [y (range @most-rows new-rows) x (range new-cols)]
                        (cell-entry {:x x :y y :w cs :r (rand-int 4)}))
                   ; add new columns to existing rows
-                  (for [y (range new-rows) x (range @cols new-cols)]
+                  (for [y (range new-rows) x (range @most-cols new-cols)]
                        (cell-entry {:x x :y y :w cs :r (rand-int 4)})))
                  (apply concat)
                  (apply hash-map)
                  (swap! cell-states merge))
+            (swap! most-rows max new-rows)
+            (swap! most-cols max new-cols)
             (reset! rows new-rows)
             (reset! cols new-cols)))
         on-cell-click
