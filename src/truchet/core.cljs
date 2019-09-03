@@ -74,7 +74,7 @@
              :on-click on-cell-click)]))
      ]))
 
-(defn save-svg []
+(defn button-save-svg []
   (. js/URL (createObjectURL
              (.. js/document (querySelector "svg.grid") -outerHTML))))
 
@@ -135,7 +135,7 @@
                           on-complement-button-click
                           on-bg-rgb-change]}]
   [:div.menu
-   [:button {:onClick on-back-button-click} "Back"]
+   [:button.block-display {:onClick on-back-button-click} "Back"]
    [:div.menu-content
     [:form.color-form
      [rgb-slider {:rgb fill
@@ -147,6 +147,12 @@
                   :color-name "B"
                   :on-complement-button-click on-complement-button-click}]
      [:div [:button {:type "button" :onClick on-swap-button-click} "Swap"]]]]])
+
+(defn main-menu [{:keys [on-back-button-click on-color-button-click]}]
+  [:div.menu
+   [:div
+    [:button.block-display {:onClick on-back-button-click} "Back"]
+    [:button.block-display {:onClick on-color-button-click} "Change colors"]]])
 
 (defn app []
   (let [rows (atom 0)
@@ -192,24 +198,26 @@
                 old-bg @bg]
             (reset! fill old-bg)
             (reset! bg old-fill)))
-        on-back-button-click
-        (fn [] (reset! control-menu button-open-control-menu))
         on-complement-button-click
         (fn [x]
           (apply set-color-from-comp
                  (condp = (.. x -target -name)
                         "complementB" [fill @bg]
                         "complementA" [bg @fill])))
-        open-control-menu
-        (fn [e] (reset! control-menu color-menu))
+        close-menu
+        (fn [] (reset! control-menu button-open-control-menu))
+        open-menu
+        (fn [m] (fn [] (reset! control-menu m)))
 
         control-menu-props
-        {button-open-control-menu #(hash-map :on-click open-control-menu)
+        {button-open-control-menu #(hash-map :on-click (open-menu main-menu))
+         main-menu #(hash-map :on-back-button-click close-menu
+                              :on-color-button-click (open-menu color-menu))
          color-menu #(hash-map :fill @fill
                                :bg @bg
                                :on-complement-button-click on-complement-button-click
                                :on-swap-button-click on-swap-button-click
-                               :on-back-button-click on-back-button-click
+                               :on-back-button-click (open-menu main-menu)
                                :on-fill-rgb-change on-fill-rgb-change
                                :on-bg-rgb-change on-bg-rgb-change)}]
 

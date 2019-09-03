@@ -35,6 +35,12 @@ button.small {
     padding: 4px;
 }
 
+button.block-display {
+    display: block;
+    width: 75%;
+    margin: 10px auto;
+}
+
 button:active {
     border: 1px inset black;
 }
@@ -55,7 +61,7 @@ svg.grid {
 .color-form div {
     display: flex;
     justify-content: flex-start;
-    margin: 8px 0;
+    margin: 10px 0;
 }
 .color-form label {
     width: 6ch;
