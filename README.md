@@ -1,4 +1,4 @@
-# {{name}}
+# Truchet
 
 ## Run
 
