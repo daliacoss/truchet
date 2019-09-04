@@ -139,7 +139,7 @@
   [:div.menu
    [:button.block-display {:onClick on-back-button-click} "Back"]
    [:div.menu-content
-    [:form.color-form
+    [:form
      [rgb-slider {:rgb fill
                   :on-change on-fill-rgb-change
                   :color-name "A"
