@@ -16,6 +16,10 @@ html, body {
     max-width: 400px;
 }
 
+a.button-link {
+    text-decoration: none;
+}
+
 .menu {
     background-color: white;
     box-shadow:  4px 4px 2px 1px rgba(0, 0, 255, .2);

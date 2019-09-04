@@ -74,9 +74,11 @@
              :on-click on-cell-click)]))
      ]))
 
-(defn button-save-svg []
-  (. js/URL (createObjectURL
-             (.. js/document (querySelector "svg.grid") -outerHTML))))
+(defn svg-url []
+  (let [blob (new js/Blob
+                  (array (.. js/document (querySelector "svg.grid") -outerHTML))
+                  #js {:type "image/svg+xml"})]
+    (. js/URL (createObjectURL blob))))
 
 (defn rgb-slider [{:keys [on-change color-name]}]
   (let [slider {:type "range"
@@ -148,11 +150,13 @@
                   :on-complement-button-click on-complement-button-click}]
      [:div [:button {:type "button" :onClick on-swap-button-click} "Swap"]]]]])
 
-(defn main-menu [{:keys [on-back-button-click on-color-button-click]}]
+(defn main-menu [props]
   [:div.menu
    [:div
-    [:button.block-display {:onClick on-back-button-click} "Back"]
-    [:button.block-display {:onClick on-color-button-click} "Change colors"]]])
+    [:button.block-display {:onClick (props :on-back-button-click)} "Back"]
+    [:button.block-display {:onClick (props :on-color-button-click)} "Change colors"]
+    [:a.button-link {:href (svg-url) :download ""}
+     [:button.block-display {:type "button"} "Save pattern as SVG"]]]])
 
 (defn app []
   (let [rows (atom 0)
@@ -212,6 +216,7 @@
         control-menu-props
         {button-open-control-menu #(hash-map :on-click (open-menu main-menu))
          main-menu #(hash-map :on-back-button-click close-menu
+                              ;:on-save-button-click save-svg
                               :on-color-button-click (open-menu color-menu))
          color-menu #(hash-map :fill @fill
                                :bg @bg
