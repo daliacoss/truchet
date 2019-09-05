@@ -80,35 +80,41 @@
                   #js {:type "image/svg+xml"})]
     (. js/URL (createObjectURL blob))))
 
-(defn rgb-slider [{:keys [on-change color-name]}]
-  (let [slider {:type "range"
-                :min 0
-                :max 255
-                :onChange on-change
-                :step 1}
-        numbox (assoc slider :type "number")
-        legend (str "Colour " color-name)
-        other (if (= color-name "A") "B" "A")
-        combined-input
-        (fn [n v]
-          [:div
-           [:label {:for n} n]
-           [:span.slider-wrapper [:input (assoc slider :name n :value v)]]
-           [:input (assoc numbox :name n :value v)]
-           ;[:br]
-           ])]
-    (fn [{:keys [rgb on-complement-button-click] :as props}]
-      (conj
-       (into
-        [:fieldset [:legend legend]]
-        (map
-         combined-input
-         ["red" "green" "blue"]
-         [(rgb :r) (rgb :g) (rgb :b)]))
-       [:div [:button.small {:type "button"
-                             :name (str "complement" other)
-                             :onClick on-complement-button-click}
-                             "Complement " other]]))))
+(defn slider-with-num-field [props]
+  (let [slider (conj {:type "range"
+                      :min 0
+                      :value 0
+                      :name "meow"
+                      :step 1
+                      ; allow either on-click or onClick
+                      :onClick (props :on-click)}
+                     props)
+        numbox (assoc slider :type "number")]
+    [:div
+     [:label {:for (props :name)} (props :name)]
+     [:span.slider-wrapper [:input slider]]
+     [:input numbox]]))
+
+(defn rgb-fieldset [{:keys [rgb
+                            on-complement-button-click
+                            on-change
+                            color-name]}]
+  (let [other (if (= color-name "A") "B" "A")]
+    (conj
+     (into
+      [:fieldset [:legend (str "Colour " color-name)]]
+      (map
+       (fn [n v]
+         [slider-with-num-field {:max 255
+                                 :onChange on-change
+                                 :name n
+                                 :value v}])
+       ["red" "green" "blue"]
+       [(rgb :r) (rgb :g) (rgb :b)]))
+     [:div [:button.small {:type "button"
+                           :name (str "complement" other)
+                           :onClick on-complement-button-click}
+                           "Complement " other]])))
 
 (defn rgb-change-handler [a]
   (fn [x]
@@ -129,6 +135,19 @@
 (defn button-open-control-menu [{:keys [on-click] :as props}]
   [:button {:onClick on-click :autofocus "" :type "button"} "Controls"])
 
+(defn zoom-menu [{:keys [cell-size on-back-button-click on-zoom-change]}]
+  (let [slider {:type "range"
+                :min 0
+                :max 255
+                :onChange on-zoom-change
+                :step 1}
+        numbox (assoc slider :type "number")]
+    [:div.menu
+     [:button.block-display {:onClick on-back-button-click} "Back"]
+     [:div.menu-content
+      [:form
+       [slider-with-num-field {}]]]]))
+
 (defn color-menu [{:keys [fill
                           bg
                           on-swap-button-click
@@ -140,23 +159,47 @@
    [:button.block-display {:onClick on-back-button-click} "Back"]
    [:div.menu-content
     [:form
-     [rgb-slider {:rgb fill
-                  :on-change on-fill-rgb-change
-                  :color-name "A"
-                  :on-complement-button-click on-complement-button-click}]
-     [rgb-slider {:rgb bg
-                  :on-change on-bg-rgb-change
-                  :color-name "B"
-                  :on-complement-button-click on-complement-button-click}]
+     [rgb-fieldset {:rgb fill
+                    :on-change on-fill-rgb-change
+                    :color-name "A"
+                    :on-complement-button-click on-complement-button-click}]
+     [rgb-fieldset {:rgb bg
+                    :on-change on-bg-rgb-change
+                    :color-name "B"
+                    :on-complement-button-click on-complement-button-click}]
      [:div [:button {:type "button" :onClick on-swap-button-click} "Swap"]]]]])
 
-(defn main-menu [props]
+(defn button-save-svg []
+  [:a.button-link {:href (svg-url) :download ""}
+   [:button.block-display {:type "button"} "Save pattern as SVG"]])
+
+(defn main-menu [{:keys [items]}]
+  [:div.menu 
+   (conj
+    (->> items
+         (map #(vector :button.block-display
+                      {:onClick (get % :on-click)}
+                      (get % :name)))
+         (into [:div]))
+    [button-save-svg])])
+
+(defn mainn-menu [{:keys [items]}]
   [:div.menu
-   [:div
-    [:button.block-display {:onClick (props :on-back-button-click)} "Back"]
-    [:button.block-display {:onClick (props :on-color-button-click)} "Change colors"]
-    [:a.button-link {:href (svg-url) :download ""}
-     [:button.block-display {:type "button"} "Save pattern as SVG"]]]])
+   (conj
+    (into
+     [:div]
+     (map
+      #(vector :button.block-display
+               {:onClick (get % :on-click)}
+               (get % :name))
+      items))
+    [button-save-svg])])
+   ;(conj
+    ;(into [:div] ()) 
+    ;[:button.block-display {:onClick (props :on-back-button-click)} "Back"]
+    ;[:button.block-display {:onClick (props :on-color-button-click)} "Change colors"]
+    ;[:button.block-display {:onClick (props :on-zoom-button-click)} "Change zoom"]
+    ;button-save-svg)])
 
 (defn app []
   (let [rows (atom 0)
@@ -215,9 +258,13 @@
 
         control-menu-props
         {button-open-control-menu #(hash-map :on-click (open-menu main-menu))
-         main-menu #(hash-map :on-back-button-click close-menu
-                              ;:on-save-button-click save-svg
-                              :on-color-button-click (open-menu color-menu))
+         main-menu #(hash-map :items [{:on-click close-menu
+                                       :name "Back"}
+                                      {:on-click (open-menu color-menu)
+                                       :name "Change colors"}
+                                      {:on-click (open-menu zoom-menu)
+                                       :name "Change zoom level"}])
+         zoom-menu #(hash-map :on-back-button-click (open-menu main-menu))
          color-menu #(hash-map :fill @fill
                                :bg @bg
                                :on-complement-button-click on-complement-button-click
