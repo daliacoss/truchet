@@ -38,38 +38,53 @@
   (let [c (get-container)]
     {:width c.clientWidth :height c.clientHeight}))
 
-(defn cell [{:keys [r coords]}]
-  (let [points (map atom (apply concat (get coords r)))
+(defn cell-coords [{:keys [col row r size]}]
+  (let [tl [(* col size) (* row size)]
+        tr (update tl 0 + size)
+        bl (update tl 1 + size)
+        br (update tr 1 + size)]
+    (case r
+      0 [tl tr br]
+      1 [tr br bl]
+      2 [br bl tl]
+      3 [bl tl tr]
+      nil)))
+
+(defn cell [props]
+  (let [points (map atom (apply concat (cell-coords props)))
         anim-points (map anim/interpolate-to points)]
-    (fn [{:keys [r coords tl w on-click] :as params}]
+    (fn [{:keys [r size col row on-click] :as props}]
       (dorun
        ; flatten vector of vectors
-       (map reset! points (apply concat (get coords r))))
-      [:g
-       [:polygon {:points (string/join " " (map deref anim-points))
-                  }]
-       [:rect {:width w
-               :height w
+       (map reset! points (apply concat (cell-coords props))))
+      [:g {:data-key (get props :key)}
+       [:polygon {:points (string/join " " (map deref anim-points))}]
+       [:rect {:width size
+               :height size
                :fill "none"
-               :x (first tl)
-               :y (second tl)
-               :on-click #(on-click (get params :key))}]])))
+               :x (* col size)
+               :y (* row size)
+               :on-click #(on-click [row col])
+               ;:on-click on-click
+               }]])))
 
 (defn grid [params]
-  (fn [{:keys [rows cols fill bg cell-data on-cell-click]}]
+  (fn [{:keys [rows cols cell-size fill bg cell-data on-cell-click]}]
     [:svg {:class "grid"
            :xmlns "http://www.w3.org/2000/svg"
            :fill fill
            :shape-rendering "crispEdges"
            :pointer-events "all"}
-     (let [w (get-in cell-data [[0 0] :w] 0)]
-       [:rect {:width (* cols w) :height (* rows w) :fill bg}])
+     [:rect {:width (* cols cell-size) :height (* rows cell-size) :fill bg}]
      (doall
       (for [y (range rows) x (range cols)]
            [cell
             (assoc
              (get cell-data [y x])
-             :key [y x]
+             :size cell-size
+             :col x
+             :row y
+             :key [y x cell-size]
              :fill fill
              :on-click on-cell-click)]))
      ]))
@@ -84,14 +99,15 @@
   (let [slider (conj {:type "range"
                       :min 0
                       :value 0
-                      :name "meow"
+                      :name "my-field"
                       :step 1
-                      ; allow either on-click or onClick
-                      :onClick (props :on-click)}
+                      ; allow either on-change or onChange
+                      :onChange (props :on-change)}
                      props)
+        my-name (get slider :name)
         numbox (assoc slider :type "number")]
     [:div
-     [:label {:for (props :name)} (props :name)]
+     [:label {:for my-name} (get props :label my-name)]
      [:span.slider-wrapper [:input slider]]
      [:input numbox]]))
 
@@ -116,14 +132,42 @@
                            :onClick on-complement-button-click}
                            "Complement " other]])))
 
-(defn rgb-change-handler [a]
+(defn rgb-change-handler [color-atom]
   (fn [x]
     (let [target (.. x -currentTarget) ; currentTarget via SyntheticEvent
           k (keyword (. target -name))
           ; input value will always be a valid number or empty string
           ; (see whatwg 4.10.5.1.12) 
           value (js/Number (. target -value))]
-      (swap! a assoc (get rgb-keys k) value))))
+      (swap! color-atom assoc (get rgb-keys k) value))))
+
+(defn color-swap-handler [a-atom b-atom]
+  (fn []
+    (let [old-a @a-atom
+          old-b @b-atom]
+      (reset! a-atom old-b)
+      (reset! b-atom old-a))))
+
+(defn zoom-change-handler [cell-size-atom resize]
+  (fn [x]
+    (let [value (js/Number (.. x -currentTarget -value))]
+      (reset! cell-size-atom value)
+      (resize (get-container-size))
+      )))
+
+(defn cell-click-handler [cell-states]
+  (fn [k] 
+    (let [old-r (get-in @cell-states [k :r])]
+      (swap! cell-states assoc-in [k :r] (-> old-r inc (mod 4))))))
+
+;(defn -cell-click-handler [cell-states]
+;  (fn [x] 
+;    (let [g (.. x -target -parentElement)
+;          col (js/Number (. g getAttribute "data-col"))
+;          row (js/Number (. g getAttribute "data-row"))
+;          k [row col] 
+;          old-r (get-in @cell-states [k :r])]
+;      (swap! cell-states assoc-in [k :r] (-> old-r inc (mod 4))))))
 
 (defn set-color-from-comp
   ([] nil)
@@ -136,17 +180,16 @@
   [:button {:onClick on-click :autofocus "" :type "button"} "Controls"])
 
 (defn zoom-menu [{:keys [cell-size on-back-button-click on-zoom-change]}]
-  (let [slider {:type "range"
-                :min 0
-                :max 255
-                :onChange on-zoom-change
-                :step 1}
-        numbox (assoc slider :type "number")]
-    [:div.menu
-     [:button.block-display {:onClick on-back-button-click} "Back"]
-     [:div.menu-content
-      [:form
-       [slider-with-num-field {}]]]]))
+  [:div.menu
+   [:button.block-display {:onClick on-back-button-click} "Back"]
+   [:div.menu-content
+    [:form
+     [slider-with-num-field {:min 40
+                             :max 200
+                             :on-change on-zoom-change
+                             :name "zoom"
+                             :label "tile length (pixels)"
+                             :value cell-size}]]]])
 
 (defn color-menu [{:keys [fill
                           bg
@@ -178,28 +221,10 @@
    (conj
     (->> items
          (map #(vector :button.block-display
-                      {:onClick (get % :on-click)}
-                      (get % :name)))
+                       {:onClick (get % :on-click)}
+                       (get % :name)))
          (into [:div]))
     [button-save-svg])])
-
-(defn mainn-menu [{:keys [items]}]
-  [:div.menu
-   (conj
-    (into
-     [:div]
-     (map
-      #(vector :button.block-display
-               {:onClick (get % :on-click)}
-               (get % :name))
-      items))
-    [button-save-svg])])
-   ;(conj
-    ;(into [:div] ()) 
-    ;[:button.block-display {:onClick (props :on-back-button-click)} "Back"]
-    ;[:button.block-display {:onClick (props :on-color-button-click)} "Change colors"]
-    ;[:button.block-display {:onClick (props :on-zoom-button-click)} "Change zoom"]
-    ;button-save-svg)])
 
 (defn app []
   (let [rows (atom 0)
@@ -222,10 +247,12 @@
             (->> (concat
                   ; add new rows
                   (for [y (range @most-rows new-rows) x (range new-cols)]
-                       (cell-entry {:x x :y y :w cs :r (rand-int 4)}))
+                       ;(cell-entry {:x x :y y :w cs :r (rand-int 4)}))
+                       [[y x] {:r (rand-int 4)}])
                   ; add new columns to existing rows
                   (for [y (range new-rows) x (range @most-cols new-cols)]
-                       (cell-entry {:x x :y y :w cs :r (rand-int 4)})))
+                       ;(cell-entry {:x x :y y :w cs :r (rand-int 4)})))
+                       [[y x] {:r (rand-int 4)}]))
                  (apply concat)
                  (apply hash-map)
                  (swap! cell-states merge))
@@ -233,18 +260,11 @@
             (swap! most-cols max new-cols)
             (reset! rows new-rows)
             (reset! cols new-cols)))
-        on-cell-click
-        (fn [k] 
-          (let [old-r (get-in @cell-states [k :r])]
-            (swap! cell-states assoc-in [k :r] (-> old-r inc (mod 4)))))
+        on-cell-click (cell-click-handler cell-states)
         on-fill-rgb-change (rgb-change-handler fill)
         on-bg-rgb-change (rgb-change-handler bg)
-        on-swap-button-click
-        (fn []
-          (let [old-fill @fill
-                old-bg @bg]
-            (reset! fill old-bg)
-            (reset! bg old-fill)))
+        on-swap-button-click (color-swap-handler fill bg)
+        on-zoom-change (zoom-change-handler cell-size resize-and-fill-grid)
         on-complement-button-click
         (fn [x]
           (apply set-color-from-comp
@@ -264,7 +284,9 @@
                                        :name "Change colors"}
                                       {:on-click (open-menu zoom-menu)
                                        :name "Change zoom level"}])
-         zoom-menu #(hash-map :on-back-button-click (open-menu main-menu))
+         zoom-menu #(hash-map :on-back-button-click (open-menu main-menu)
+                              :on-zoom-change on-zoom-change
+                              :cell-size @cell-size)
          color-menu #(hash-map :fill @fill
                                :bg @bg
                                :on-complement-button-click on-complement-button-click
@@ -285,6 +307,7 @@
         [@control-menu ((control-menu-props @control-menu))]]
        [grid {:rows @rows
               :cols @cols
+              :cell-size @cell-size
               :svg-size (get-container-size)
               :fill (. (tinycolor (clj->js @fill)) toRgbString)
               :bg (. (tinycolor (clj->js @bg)) toRgbString)
