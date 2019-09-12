@@ -228,9 +228,12 @@
 (defn get-from-storage [k fallback]
   (or
    (if-let [v (js->clj (. js/JSON parse (.. js/window -localStorage (getItem k))))]
-     (if (= (name k) "cell-states")
-      (zipmap (map str->num-vec (keys v)) (map keywordize-keys (vals v)))
-      v)
+     (cond
+       (= (name k) "cell-states") (zipmap
+                                   (map str->num-vec (keys v))
+                                   (map keywordize-keys (vals v)))
+       (map? v) (keywordize-keys v)
+       :else v)
    fallback)))
 
 (defn save-to-storage
