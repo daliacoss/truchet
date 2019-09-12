@@ -216,6 +216,39 @@
   [:a.button-link {:href (svg-url) :download ""}
    [:button.block-display {:type "button"} "Save pattern as SVG"]])
 
+(defn str->num-vec [s]
+  (->> #","
+       (string/split s)
+       (map js/Number)
+       vec))
+
+(defn keywordize-keys [coll]
+  (zipmap (map keyword (keys coll)) (vals coll)))
+
+(defn get-from-storage [k fallback]
+  (or
+   (if-let [v (js->clj (. js/JSON parse (.. js/window -localStorage (getItem k))))]
+     (if (= (name k) "cell-states")
+      (zipmap (map str->num-vec (keys v)) (map keywordize-keys (vals v)))
+      v)
+   fallback)))
+
+(defn save-to-storage
+  ([k v]
+   (let [v (if (= k :cell-states)
+               ; turn cell-state keys (e.g., [0 1]) into strings (e.g., "0,1")
+               (zipmap (map #(string/join "," %) (keys v)) (vals v))
+               v)
+         stringified-v (. js/JSON (stringify (clj->js v)))]
+     (.. js/window -localStorage (setItem (name k) stringified-v))))
+  ([k v & more]
+   (->> more
+        (concat [k v])
+        (partition 2)
+        (map #(apply save-to-storage %))
+        dorun)))
+   ;(dorun (map save-to-storage (partition 2 (concat [k v] more))))))
+
 (defn main-menu [{:keys [items]}]
   [:div.menu 
    (conj
@@ -224,18 +257,20 @@
                        {:onClick (get % :on-click)}
                        (get % :name)))
          (into [:div]))
-    [button-save-svg])])
+    [button-save-svg]
+    )])
 
 (defn app []
   (let [rows (atom 0)
         cols (atom 0)
-        most-rows (atom 0)
-        most-cols (atom 0)
-        cell-size (atom 100)
-        fill (atom {:r 100 :g 0 :b 200}) 
-        bg (atom {:r 255 :g 255 :b 255}) 
-        cell-states (atom {})
+        most-rows (atom (get-from-storage "most-rows" 0))
+        most-cols (atom (get-from-storage "most-cols" 0))
+        cell-size (atom (get-from-storage "cell-size" 100))
+        fill (atom (get-from-storage "fill" {:r 0 :g 0 :b 0}))
+        bg (atom (get-from-storage "bg" {:r 255 :g 255 :b 255}))
+        cell-states (atom (get-from-storage "cell-states" {}))
         control-menu (atom button-open-control-menu)
+        update-since-last-save? (atom false)
 
         ; callbacks
         resize-and-fill-grid
@@ -295,11 +330,29 @@
                                :on-fill-rgb-change on-fill-rgb-change
                                :on-bg-rgb-change on-bg-rgb-change)}]
 
+    ; add watches
+    (let [f #(reset! update-since-last-save? true)]
+      (dorun (map #(add-watch % :track-update f)
+                  [most-rows, most-cols, cell-states, fill, bg, cell-size])))
+
     ; initialize the component
     (resize-and-fill-grid (get-container-size))
     (. js/window (addEventListener
                   "resize"
                   #(resize-and-fill-grid (get-container-size))))
+    (js/setInterval
+     (fn []
+       (if update-since-last-save? 
+        (do
+          (save-to-storage :most-rows @most-rows
+                           :most-cols @most-cols
+                           :cell-states @cell-states
+                           :fill @fill
+                           :bg @bg
+                           :cell-size @cell-size)
+          (reset! update-since-last-save? false))))
+     5000)
+
     ; renderer
     (fn []
       [:div#app
