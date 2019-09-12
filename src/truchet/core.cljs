@@ -258,6 +258,9 @@
                        (get % :name)))
          (into [:div]))
     [button-save-svg]
+    [:p.copyright {:aria-role "contentinfo"}
+     "made by " [:a {:href "https://ko-fi.com/imdecky"} "decky"] [:br]
+     [:a {:href "https://github.com/deckycoss/truchet"} "source code"]]
     )])
 
 (defn app []
@@ -356,8 +359,11 @@
     ; renderer
     (fn []
       [:div#app
-       [:div#menu-wrapper
-        [@control-menu ((control-menu-props @control-menu))]]
+       (let [cm @control-menu]
+         [(if (= cm button-open-control-menu)
+              :div#menu-wrapper-min
+              :div#menu-wrapper)
+          [@control-menu ((control-menu-props @control-menu))]])
        [grid {:rows @rows
               :cols @cols
               :cell-size @cell-size
@@ -365,7 +371,8 @@
               :fill (. (tinycolor (clj->js @fill)) toRgbString)
               :bg (. (tinycolor (clj->js @bg)) toRgbString)
               :on-cell-click on-cell-click
-              :cell-data @cell-states}]])))
+              :cell-data @cell-states}]
+       ])))
 
 (defn start []
   (reagent/render-component [app] (get-container)))

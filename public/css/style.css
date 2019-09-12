@@ -9,6 +9,11 @@ html, body {
     overflow: hidden;
 }
 
+#menu-wrapper-min {
+    position: absolute;
+    margin: 10px;
+}
+
 #menu-wrapper {
     position: absolute;
     margin: 10px;
@@ -96,4 +101,10 @@ svg.grid {
     width: 5ch;
     height: 100%;
     font: inherit;
+}
+
+.copyright {
+    margin: 0;
+    text-align: center;
+    font-size: smaller;
 }
