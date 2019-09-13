@@ -1,24 +1,18 @@
 # Truchet
 
+Hello! This is a thing I made to learn ClojureScript and Reagent. It's a toy for making graphics based on Truchet tile patterns.
+
+## Build
+
+First, ensure that you have Node.js and Java SDK 8 installed.
+
+Then, navigate to the repository root and run `yarn install` (if you have Yarn) or `npm install` to install dependencies.
+
+Now you can build the application as a static site by running `shadow-cljs release app` or simply `yarn release`.
+
 ## Run
 
-``` shell
-yarn install
-
-yarn watch
-```
-
-## Clean
-
-``` shell
-yarn clean
-```
-
-## Release
-
-``` shell
-yarn release
-```
+After installing dependencies, use `shadow-cljs watch app` or `yarn watch` to run the app in a development server.
 
 ## License
 
