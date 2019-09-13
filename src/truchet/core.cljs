@@ -7,29 +7,7 @@
             [goog.string.format]
             ))
 
-;(def cell-size 100)
-
-;(defn take-cycle
-;  ([n xs]
-;   (take-cycle n xs 0))
-;  ([n xs i]
-;   (take n (-> xs cycle (nthrest i)))))
-
 (def rgb-keys {:red :r :green :g :blue :b})
-
-(defn cell-entry [{:keys [x y w r]}]
-  (let [tl [(* x w) (* y w)]
-        tr (update tl 0 + w)
-        bl (update tl 1 + w)
-        br (update tr 1 + w)]
-    [[y x]
-     {:r r
-      :tl tl
-      :w w
-      :coords [[tl tr br]
-               [tr br bl]
-               [br bl tl]
-               [bl tl tr]]}]))
 
 (defn get-container []
   (. js/document (getElementById "app-container")))
@@ -177,7 +155,16 @@
               :keywordize-keys true ))))
 
 (defn button-open-control-menu [{:keys [on-click] :as props}]
-  [:button {:onClick on-click :autofocus "" :type "button"} "Controls"])
+  (let [myref (atom nil)]
+    (reagent/create-class
+     {:reagent-render
+      (fn []
+        [:button {:ref (fn [x] (reset! myref x))
+                  :onClick on-click
+                  :autofocus ""
+                  :type "button"} "Controls"])
+      :component-did-mount
+      (fn [] (some-> @myref (. focus)))})))
 
 (defn zoom-menu [{:keys [cell-size on-back-button-click on-zoom-change]}]
   [:div.menu
@@ -261,7 +248,7 @@
                        (get % :name)))
          (into [:div]))
     [button-save-svg]
-    [:p.copyright {:aria-role "contentinfo"}
+    [:p.copyright {:role "contentinfo"}
      "made by " [:a {:href "https://ko-fi.com/imdecky"} "decky"] [:br]
      [:a {:href "https://github.com/deckycoss/truchet"} "source code"]]
     )])
